@@ -4,29 +4,20 @@
 <html>
 <head>
     <title>File Explorer</title>
-    <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .file-list {
-            max-width: 800px;
-            margin: 20px auto;
+        .file-list { max-width: 1000px; }
+        .directory { color: #0d6efd; }
+        .file { color: #6c757d; }
+        .file-size {
+            width: 130px;
+            text-align: right;
+            margin-right: 15px; /* Добавлен пробел */
         }
-        .directory {
-            color: #0d6efd;
-        }
-        .file {
-            color: #6c757d;
-        }
-        .breadcrumb {
-            background-color: #e9ecef;
-            padding: 1rem;
-            border-radius: 0.25rem;
-        }
-        .drive-buttons {
-            margin-bottom: 15px;
-        }
+        .file-date { width: 200px; }
+        .drive-buttons { margin-bottom: 15px; }
+        .list-group-item.active { font-weight: 600; }
     </style>
 </head>
 <body class="bg-light">
@@ -37,7 +28,6 @@
         </div>
 
         <div class="card-body">
-            <!-- Хлебные крошки -->
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item">
@@ -47,7 +37,6 @@
                 </ol>
             </nav>
 
-            <!-- Кнопки дисков -->
             <div class="drive-buttons">
                 <c:url value="/" var="cDriveUrl">
                     <c:param name="path" value="C:/"/>
@@ -74,10 +63,11 @@
                 </a>
             </c:if>
 
-            <!-- Список файлов -->
             <div class="list-group">
-                <div class="list-group-item active">
-                    Files in: <strong>${currentPath}</strong>
+                <div class="list-group-item active d-flex">
+                    <div class="flex-grow-1">Name</div>
+                    <div class="file-size">Size</div>
+                    <div class="file-date">Created</div>
                 </div>
 
                 <c:forEach items="${items}" var="item">
@@ -86,16 +76,55 @@
                             <c:url value="/" var="itemUrl">
                                 <c:param name="path" value="${currentPath}/${item.name}"/>
                             </c:url>
-                            <a href="${itemUrl}" class="list-group-item list-group-item-action directory">
-                                <i class="fas fa-folder me-2"></i> ${item.name}/
+                            <a href="${itemUrl}" class="list-group-item list-group-item-action directory d-flex">
+                                <div class="flex-grow-1">
+                                    <i class="fas fa-folder me-2"></i> ${item.name}/
+                                </div>
+                                <div class="file-size">-</div>
+                                <div class="file-date">
+                                    <c:if test="${not empty item.creationDate}">
+                                        <fmt:formatDate value="${item.creationDate}" pattern="dd.MM.yyyy HH:mm"/>
+                                    </c:if>
+                                </div>
                             </a>
                         </c:when>
                         <c:otherwise>
                             <c:url value="/download" var="downloadUrl">
                                 <c:param name="file" value="${currentPath}/${item.name}"/>
                             </c:url>
-                            <a href="${downloadUrl}" class="list-group-item list-group-item-action file">
-                                <i class="fas fa-file me-2"></i> ${item.name}
+                            <a href="${downloadUrl}" class="list-group-item list-group-item-action file d-flex">
+                                <div class="flex-grow-1">
+                                    <i class="fas fa-file me-2"></i> ${item.name}
+                                </div>
+                                <div class="file-size">
+                                    <c:choose>
+                                        <c:when test="${item.size ge 1073741824}">
+                                            <fmt:formatNumber value="${item.size/1073741824}" maxFractionDigits="2"/> GB
+                                        </c:when>
+                                        <c:when test="${item.size ge 1048576}">
+                                            <fmt:formatNumber value="${item.size/1048576}" maxFractionDigits="2"/> MB
+                                        </c:when>
+                                        <c:when test="${item.size ge 1024}">
+                                            <fmt:formatNumber value="${item.size/1024}" maxFractionDigits="0"/> KB
+                                        </c:when>
+                                        <c:when test="${item.size >= 0}">
+                                            ${item.size} B
+                                        </c:when>
+                                        <c:otherwise>
+                                            N/A
+                                        </c:otherwise>
+                                    </c:choose>
+                                </div>
+                                <div class="file-date">
+                                    <c:choose>
+                                        <c:when test="${not empty item.creationDate}">
+                                            <fmt:formatDate value="${item.creationDate}" pattern="dd.MM.yyyy HH:mm"/>
+                                        </c:when>
+                                        <c:otherwise>
+                                            -
+                                        </c:otherwise>
+                                    </c:choose>
+                                </div>
                             </a>
                         </c:otherwise>
                     </c:choose>
@@ -109,7 +138,6 @@
     </div>
 </div>
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

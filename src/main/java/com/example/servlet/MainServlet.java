@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -35,10 +37,26 @@ public class MainServlet extends HttpServlet {
         try {
             items = Files.list(currentPath)
                     .sorted()
-                    .map(path -> new FileItem(
-                            path.getFileName().toString(),
-                            Files.isDirectory(path)
-                    ))
+                    .map(path -> {
+                        try {
+                            long size = Files.isDirectory(path) ? -1 : Files.size(path);
+                            FileTime creationTime = (FileTime) Files.getAttribute(path, "creationTime");
+                            Date creationDate = new Date(creationTime.toMillis());
+                            return new FileItem(
+                                    path.getFileName().toString(),
+                                    Files.isDirectory(path),
+                                    size,
+                                    creationDate
+                            );
+                        } catch (IOException e) {
+                            return new FileItem(
+                                    path.getFileName().toString(),
+                                    Files.isDirectory(path),
+                                    -1,
+                                    null
+                            );
+                        }
+                    })
                     .collect(Collectors.toList());
         } catch (IOException e) {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Unable to list directory contents");
