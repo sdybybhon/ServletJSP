@@ -1,6 +1,6 @@
 package com.example.servlet;
 
-import java.nio.file.attribute.FileTime;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class FileItem {
@@ -20,4 +20,10 @@ public class FileItem {
     public boolean isDirectory() { return directory; }
     public long getSize() { return size; }
     public Date getCreationDate() { return creationDate; }
+
+    public String getFormattedCreationDate() {
+        if (creationDate == null) return "-";
+        SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+        return sdf.format(creationDate);
+    }
 }

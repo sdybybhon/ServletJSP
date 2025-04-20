@@ -1,6 +1,8 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ page import="java.net.URLEncoder" %>
+<%@ page import="java.nio.charset.StandardCharsets" %>
 <html>
 <head>
     <title>File Explorer</title>
@@ -13,7 +15,7 @@
         .file-size {
             width: 130px;
             text-align: right;
-            margin-right: 15px; /* Добавлен пробел */
+            margin-right: 15px;
         }
         .file-date { width: 200px; }
         .drive-buttons { margin-bottom: 15px; }
@@ -23,8 +25,13 @@
 <body class="bg-light">
 <div class="container mt-5">
     <div class="card shadow">
-        <div class="card-header bg-primary text-white">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h3 class="mb-0"><i class="fas fa-folder-open"></i> File Explorer</h3>
+            <form action="logout" method="post">
+                <button type="submit" class="btn btn-light btn-sm">
+                    <i class="fas fa-sign-out-alt"></i> Logout (${user.username})
+                </button>
+            </form>
         </div>
 
         <div class="card-body">
@@ -37,29 +44,12 @@
                 </ol>
             </nav>
 
-            <div class="drive-buttons">
-                <c:url value="/" var="cDriveUrl">
-                    <c:param name="path" value="C:/"/>
-                </c:url>
-                <a href="${cDriveUrl}" class="btn btn-success">
-                    <i class="fas fa-hdd"></i> C: Drive
-                </a>
-
-                <c:url value="/" var="dDriveUrl">
-                    <c:param name="path" value="D:/"/>
-                </c:url>
-                <a href="${dDriveUrl}" class="btn btn-success">
-                    <i class="fas fa-hdd"></i> D: Drive
-                </a>
-            </div>
-
-            <!-- Кнопка "Наверх" -->
-            <c:if test="${not empty parentPath}">
+            <c:if test="${parentPath ne null}">
                 <c:url value="/" var="parentUrl">
                     <c:param name="path" value="${parentPath}"/>
                 </c:url>
                 <a href="${parentUrl}" class="btn btn-outline-primary mb-3">
-                    <i class="fas fa-level-up-alt"></i> Up to Parent Directory
+                    <i class="fas fa-level-up-alt"></i> Up
                 </a>
             </c:if>
 
@@ -74,23 +64,31 @@
                     <c:choose>
                         <c:when test="${item.directory}">
                             <c:url value="/" var="itemUrl">
-                                <c:param name="path" value="${currentPath}/${item.name}"/>
+                                <c:param name="path">
+                                    <c:choose>
+                                        <c:when test="${empty encodedCurrentPath}">
+                                            ${URLEncoder.encode(item.name, 'UTF-8')}
+                                        </c:when>
+                                        <c:otherwise>
+                                            ${encodedCurrentPath}/${URLEncoder.encode(item.name, 'UTF-8')}
+                                        </c:otherwise>
+                                    </c:choose>
+                                </c:param>
                             </c:url>
                             <a href="${itemUrl}" class="list-group-item list-group-item-action directory d-flex">
                                 <div class="flex-grow-1">
-                                    <i class="fas fa-folder me-2"></i> ${item.name}/
+                                    <i class="fas fa-folder me-2"></i> ${item.name}
                                 </div>
                                 <div class="file-size">-</div>
                                 <div class="file-date">
-                                    <c:if test="${not empty item.creationDate}">
-                                        <fmt:formatDate value="${item.creationDate}" pattern="dd.MM.yyyy HH:mm"/>
-                                    </c:if>
+                                    ${item.formattedCreationDate}
                                 </div>
                             </a>
                         </c:when>
                         <c:otherwise>
                             <c:url value="/download" var="downloadUrl">
-                                <c:param name="file" value="${currentPath}/${item.name}"/>
+                                <c:param name="file"
+                                    value="${user.homeDirectory}${not empty decodedCurrentPath ? '/' : ''}${decodedCurrentPath}/${item.name}"/>
                             </c:url>
                             <a href="${downloadUrl}" class="list-group-item list-group-item-action file d-flex">
                                 <div class="flex-grow-1">
@@ -98,6 +96,7 @@
                                 </div>
                                 <div class="file-size">
                                     <c:choose>
+                                        <c:when test="${item.size == -1}">-</c:when>
                                         <c:when test="${item.size ge 1073741824}">
                                             <fmt:formatNumber value="${item.size/1073741824}" maxFractionDigits="2"/> GB
                                         </c:when>
@@ -107,23 +106,13 @@
                                         <c:when test="${item.size ge 1024}">
                                             <fmt:formatNumber value="${item.size/1024}" maxFractionDigits="0"/> KB
                                         </c:when>
-                                        <c:when test="${item.size >= 0}">
-                                            ${item.size} B
-                                        </c:when>
                                         <c:otherwise>
-                                            N/A
+                                            ${item.size} B
                                         </c:otherwise>
                                     </c:choose>
                                 </div>
                                 <div class="file-date">
-                                    <c:choose>
-                                        <c:when test="${not empty item.creationDate}">
-                                            <fmt:formatDate value="${item.creationDate}" pattern="dd.MM.yyyy HH:mm"/>
-                                        </c:when>
-                                        <c:otherwise>
-                                            -
-                                        </c:otherwise>
-                                    </c:choose>
+                                    ${item.formattedCreationDate}
                                 </div>
                             </a>
                         </c:otherwise>
@@ -133,7 +122,9 @@
         </div>
 
         <div class="card-footer text-muted small">
-            <i class="fas fa-info-circle"></i> Total items: ${items.size()}
+            <i class="fas fa-info-circle"></i>
+            Total items: ${items.size()} |
+            Current path: ${user.homeDirectory}${not empty decodedCurrentPath ? '/' : ''}${decodedCurrentPath}
         </div>
     </div>
 </div>
