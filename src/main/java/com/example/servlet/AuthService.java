@@ -69,6 +69,6 @@ public class AuthService {
             stmt.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Registration failed", e);
-        }
+        }fds
     }
 }
