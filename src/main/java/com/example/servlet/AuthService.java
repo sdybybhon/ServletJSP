@@ -1,53 +1,42 @@
 package com.example.servlet;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.sql.*;
 
+import jakarta.persistence.*;
+
+import java.io.IOException;
+import java.nio.file.*;
 
 public class AuthService {
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/filemanager";
-    private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "12345";
     private static final String BASE_DIR = "C:/Student/filemanager";
+    private static EntityManagerFactory emf;
 
     static {
         try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException("MySQL JDBC Driver not found", e);
+            emf = Persistence.createEntityManagerFactory("FileManager");
+        } catch (Exception ex) {
+            throw new ExceptionInInitializerError(ex);
         }
     }
 
     public static User authenticate(String username, String password) {
-        String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
+        EntityManager em = emf.createEntityManager();
+        try {
+            TypedQuery<User> query = em.createQuery(
+                    "SELECT u FROM User u WHERE u.username = :username AND u.password = :password",
+                    User.class
+            );
+            query.setParameter("username", username);
+            query.setParameter("password", password);
 
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, username);
-            stmt.setString(2, password);
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return new User(
-                            rs.getString("username"),
-                            rs.getString("password"),
-                            rs.getString("email"),
-                            rs.getString("home_directory")
-                    );
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Database error", e);
+            return query.getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        } finally {
+            em.close();
         }
-        return null;
     }
 
     public static void register(User user) {
         String userHomeDirectory = BASE_DIR + "/" + user.getUsername();
-
         try {
             Path homePath = Paths.get(userHomeDirectory);
             if (!Files.exists(homePath)) {
@@ -57,18 +46,19 @@ public class AuthService {
             throw new RuntimeException("Failed to create user directory", e);
         }
 
-        String sql = "INSERT INTO users (username, password, email, home_directory) VALUES (?, ?, ?, ?)";
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        user.setHomeDirectory(userHomeDirectory);
 
-            stmt.setString(1, user.getUsername());
-            stmt.setString(2, user.getPassword());
-            stmt.setString(3, user.getEmail());
-            stmt.setString(4, userHomeDirectory);
-
-            stmt.executeUpdate();
-        } catch (SQLException e) {
+        EntityManager em = emf.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            em.persist(user);
+            tx.commit();
+        } catch (Exception e) {
+            if (tx.isActive()) tx.rollback();
             throw new RuntimeException("Registration failed", e);
+        } finally {
+            em.close();
         }
     }
 }
